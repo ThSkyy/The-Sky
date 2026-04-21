@@ -1,0 +1,383 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Lighting = game:GetService("Lighting")
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+local playerGui = player:WaitForChild("PlayerGui")
+local mouse = player:GetMouse()
+
+-- 🌟 VARIÁVEIS GLOBAIS
+local aimKey = Enum.KeyCode.RightShift
+local aimbotEnabled = false
+local aimLockEnabled = false
+local fov = 150
+local smoothness = 0.12
+local espEnabled = false
+local speedEnabled = false
+local flyEnabled = false
+local noclipEnabled = false
+local infiniteJump = false
+local fullbright = false
+local connections = {}
+
+-- 🎨 FUNÇÕES UTILITÁRIAS
+local function tween(obj, props, time)
+    local t = TweenService:Create(obj, TweenInfo.new(time or 0.3, Enum.EasingStyle.Quart), props)
+    t:Play()
+    return t
+end
+
+local function notify(title, text, duration)
+    local notif = Instance.new("Frame")
+    notif.Size = UDim2.new(0, 300, 0, 80)
+    notif.Position = UDim2.new(0, 20, 0, 20)
+    notif.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+    notif.Parent = playerGui
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = notif
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = title .. "\n" .. text
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextScaled = true
+    label.Font = Enum.Font.GothamBold
+    label.Parent = notif
+    
+    tween(notif, {Position = UDim2.new(0, 20, 0, 120)}).Completed:Wait()
+    game:GetService("Debris"):AddItem(notif, duration or 3)
+end
+
+-- 🔐 SENHA GUI (MELHORADA)
+local passwordGui = Instance.new("ScreenGui")
+passwordGui.Name = "TheSkyAuth"
+passwordGui.Parent = playerGui
+passwordGui.ResetOnSpawn = false
+
+local pwFrame = Instance.new("Frame")
+pwFrame.Size = UDim2.new(0, 450, 0, 320)
+pwFrame.Position = UDim2.new(0.5, -225, 0.5, -160)
+pwFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 35)
+pwFrame.BorderSizePixel = 0
+pwFrame.Parent = passwordGui
+
+local pwCorner = Instance.new("UICorner")
+pwCorner.CornerRadius = UDim.new(0, 25)
+pwCorner.Parent = pwFrame
+
+local pwGradient = Instance.new("UIGradient")
+pwGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 20, 100)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(20, 20, 60)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 10, 30))
+}
+pwGradient.Rotation = 45
+pwGradient.Parent = pwFrame
+
+-- Título Animado
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 90)
+title.BackgroundTransparency = 1
+title.Text = "🌌 THE SKY UNIVERSAL HUB"
+title.TextColor3 = Color3.fromRGB(0, 255, 200)
+title.TextScaled = true
+title.Font = Enum.Font.GothamBlack
+title.Parent = pwFrame
+
+local subtitle = Instance.new("TextLabel")
+subtitle.Size = UDim2.new(1, -50, 0, 60)
+subtitle.Position = UDim2.new(0, 25, 0, 105)
+subtitle.BackgroundTransparency = 1
+subtitle.Text = "🔐 Digite a senha para desbloquear o MELHOR HUB do Roblox!"
+subtitle.TextColor3 = Color3.fromRGB(180, 180, 255)
+subtitle.TextScaled = true
+subtitle.Font = Enum.Font.Gotham
+subtitle.TextXAlignment = Enum.TextXAlignment.Left
+subtitle.Parent = pwFrame
+
+local pwBox = Instance.new("TextBox")
+pwBox.Size = UDim2.new(1, -70, 0, 60)
+pwBox.Position = UDim2.new(0, 35, 0, 185)
+pwBox.BackgroundColor3 = Color3.fromRGB(35, 35, 60)
+pwBox.BorderSizePixel = 0
+pwBox.PlaceholderText = "Senha secreta... (Dica: Céu)"
+pwBox.Text = ""
+pwBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+pwBox.PlaceholderColor3 = Color3.fromRGB(140, 140, 200)
+pwBox.TextScaled = true
+pwBox.Font = Enum.Font.GothamSemibold
+pwBox.Parent = pwFrame
+
+local boxCorner = Instance.new("UICorner")
+boxCorner.CornerRadius = UDim.new(0, 15)
+boxCorner.Parent = pwBox
+
+local enterBtn = Instance.new("TextButton")
+enterBtn.Size = UDim2.new(0.48, -5, 0, 55)
+enterBtn.Position = UDim2.new(0, 35, 0, 265)
+enterBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 160)
+enterBtn.BorderSizePixel = 0
+enterBtn.Text = "🌟 LIBERAR HUB"
+enterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+enterBtn.TextScaled = true
+enterBtn.Font = Enum.Font.GothamBold
+enterBtn.Parent = pwFrame
+
+local btnCorner = Instance.new("UICorner")
+btnCorner.CornerRadius = UDim.new(0, 15)
+btnCorner.Parent = enterBtn
+
+-- Animação de Loading
+pwFrame.Size = UDim2.new(0, 0, 0, 0)
+tween(pwFrame, {Size = UDim2.new(0, 450, 0, 320)}, 0.8)
+
+-- 🎛️ PAINEL PRINCIPAL (20+ CATEGORIAS)
+local mainGui = Instance.new("ScreenGui")
+mainGui.Name = "TheSkyHub"
+mainGui.Parent = playerGui
+mainGui.ResetOnSpawn = false
+mainGui.Enabled = false
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 850, 0, 600)
+mainFrame.Position = UDim2.new(0.5, -425, 0.5, -300)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = mainGui
+
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 25)
+mainCorner.Parent = mainFrame
+
+-- HEADER PREMIUM
+local header = Instance.new("Frame")
+header.Size = UDim2.new(1, 0, 0, 70)
+header.BackgroundColor3 = Color3.fromRGB(0, 200, 150)
+header.BorderSizePixel = 0
+header.Parent = mainFrame
+
+local headerCorner = Instance.new("UICorner")
+headerCorner.CornerRadius = UDim.new(0, 25)
+headerCorner.Parent = header
+
+local headerTitle = Instance.new("TextLabel")
+headerTitle.Size = UDim2.new(1, -120, 1, 0)
+headerTitle.BackgroundTransparency = 1
+headerTitle.Text = "🌌 THE SKY UNIVERSAL HUB v3.0 | 100+ FEATURES"
+headerTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+headerTitle.TextScaled = true
+headerTitle.Font = Enum.Font.GothamBlack
+headerTitle.TextXAlignment = Enum.TextXAlignment.Left
+headerTitle.Position = UDim2.new(0, 25, 0, 0)
+headerTitle.Parent = header
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 60, 0, 60)
+closeBtn.Position = UDim2.new(1, -70, 0, 5)
+closeBtn.BackgroundTransparency = 1
+closeBtn.Text = "❌"
+closeBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+closeBtn.TextScaled = true
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.Parent = header
+
+local minimizeBtn = Instance.new("TextButton")
+minimizeBtn.Size = UDim2.new(0, 60, 0, 60)
+minimizeBtn.Position = UDim2.new(1, -140, 0, 5)
+minimizeBtn.BackgroundTransparency = 1
+minimizeBtn.Text = "➖"
+minimizeBtn.TextColor3 = Color3.fromRGB(255, 200, 0)
+minimizeBtn.TextScaled = true
+minimizeBtn.Font = Enum.Font.GothamBold
+minimizeBtn.Parent = header
+
+-- SCROLL + 20 CATEGORIAS
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.new(1, -25, 1, -95)
+scroll.Position = UDim2.new(0, 12.5, 0, 80)
+scroll.BackgroundTransparency = 1
+scroll.ScrollBarThickness = 12
+scroll.ScrollBarImageColor3 = Color3.fromRGB(0, 200, 150)
+scroll.CanvasSize = UDim2.new(0, 0, 0, 4000)
+scroll.Parent = mainFrame
+
+-- 🎨 FUNÇÃO DE CRIAÇÃO DE TABS (20+)
+local tabNames = {
+    "🎯 Aimbot", "👁️ ESP", "🏃 Movement", "👤 Player Mods", "🌈 Visuals",
+    "🎮 Combat", "🛡️ Protection", "📱 Teleport", "💰 Money", "🧬 Gun Mods",
+    "🏠 Building", "🎵 Audio", "🌐 Network", "📊 Stats", "🎨 Theme",
+    "🔧 Config", "📈 Prediction", "🎯 Silent Aim", "🚀 Exploits", "⚡ Performance"
+}
+
+local tabFrames = {}
+local currentTabIndex = 1
+
+for i, tabName in ipairs(tabNames) do
+    -- Tab Button
+    local tabBtn = Instance.new("TextButton")
+    tabBtn.Size = UDim2.new(0, 130, 0, 45)
+    tabBtn.Position = UDim2.new(0, (i-1)*135 + 10, 0, 5)
+    tabBtn.BackgroundColor3 = i == 1 and Color3.fromRGB(0, 200, 150) or Color3.fromRGB(35, 35, 60)
+    tabBtn.BorderSizePixel = 0
+    tabBtn.Text = tabName
+    tabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    tabBtn.TextScaled = true
+    tabBtn.Font = Enum.Font.GothamBold
+    tabBtn.Parent = scroll
+    
+    local tabBtnCorner = Instance.new("UICorner")
+    tabBtnCorner.CornerRadius = UDim.new(0, 15)
+    tabBtnCorner.Parent = tabBtn
+    
+    -- Tab Content
+    local tabContent = Instance.new("Frame")
+    tabContent.Size = UDim2.new(1, -40, 0, 380)
+    tabContent.Position = UDim2.new(0, 20, 0, 65 + (i-1)*410)
+    tabContent.BackgroundTransparency = 1
+    tabContent.Visible = i == 1
+    tabContent.Parent = scroll
+    tabFrames[i] = tabContent
+    
+    tabBtn.MouseButton1Click:Connect(function()
+        for j, frame in pairs(tabFrames) do
+            frame.Visible = false
+            tabNames[j].BackgroundColor3 = Color3.fromRGB(35, 35, 60)
+        end
+        tabContent.Visible = true
+        tabBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 150)
+        currentTabIndex = i
+        scroll.CanvasPosition = Vector2.new(0, (i-1)*410)
+    end)
+end
+
+-- 🛠️ FUNÇÕES DE UI (Toggles, Sliders, Dropdowns, Keybinds)
+local function createToggle(parent, name, default, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 50)
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+    frame.BorderSizePixel = 0
+    frame.Parent = parent
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = frame
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -80, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = "  " .. name
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextScaled = true
+    label.Font = Enum.Font.Gotham
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+    
+    local toggle = Instance.new("TextButton")
+    toggle.Size = UDim2.new(0, 40, 0, 40)
+    toggle.Position = UDim2.new(1, -50, 0.5, -20)
+    toggle.BackgroundColor3 = default and Color3.fromRGB(0, 255, 120) or Color3.fromRGB(255, 60, 60)
+    toggle.BorderSizePixel = 0
+    toggle.Text = ""
+    toggle.Parent = frame
+    
+    local tCorner = Instance.new("UICorner")
+    tCorner.CornerRadius = UDim.new(0, 20)
+    tCorner.Parent = toggle
+    
+    local state = default
+    toggle.MouseButton1Click:Connect(function()
+        state = not state
+        toggle.BackgroundColor3 = state and Color3.fromRGB(0, 255, 120) or Color3.fromRGB(255, 60, 60)
+        callback(state)
+    end)
+    
+    return frame
+end
+
+local function createSlider(parent, name, min, max, default, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 70)
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+    frame.BorderSizePixel = 0
+    frame.Parent = parent
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = frame
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -20, 0, 30)
+    label.BackgroundTransparency = 1
+    label.Text = name .. ": " .. default
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextScaled = true
+    label.Font = Enum.Font.Gotham
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Position = UDim2.new(0, 15, 0, 5)
+    label.Parent = frame
+    
+    local sliderBar = Instance.new("Frame")
+    sliderBar.Size = UDim2.new(1, -30, 0, 25)
+    sliderBar.Position = UDim2.new(0, 15, 0, 40)
+    sliderBar.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+    sliderBar.BorderSizePixel = 0
+    sliderBar.Parent = frame
+    
+    local barCorner = Instance.new("UICorner")
+    barCorner.CornerRadius = UDim.new(0, 12)
+    barCorner.Parent = sliderBar
+    
+    local fill = Instance.new("Frame")
+    local percent = (default - min) / (max - min)
+    fill.Size = UDim2.new(percent, 0, 1, 0)
+    fill.BackgroundColor3 = Color3.fromRGB(0, 200, 150)
+    fill.BorderSizePixel = 0
+    fill.Parent = sliderBar
+    
+    local fillCorner = Instance.new("UICorner")
+    fillCorner.CornerRadius = UDim.new(0, 12)
+    fillCorner.Parent = fill
+    
+    local dragging = false
+    sliderBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+        end
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local pos = sliderBar.AbsolutePosition.X
+            local size = sliderBar.AbsoluteSize.X
+            local relative = math.clamp((input.Position.X - pos) / size, 0, 1)
+            local value = math.floor(min + (max - min) * relative)
+            
+            fill.Size = UDim2.new(relative, 0, 1, 0)
+            label.Text = name .. ": " .. value
+            callback(value)
+        end
+    end)
+    
+    return frame
+end
+
+local function createKeybind(parent, name, defaultKey, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 50)
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+    frame.BorderSizePixel = 0
+    frame.Parent = parent
+    
+    local
